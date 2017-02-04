@@ -1,2 +1,2 @@
 # scythe-scorer
-A scoring companion for Scythe
+A combat scoring companion for Scythe
