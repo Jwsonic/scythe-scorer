@@ -1,11 +1,24 @@
 module Main exposing (..)
 
+import Html exposing (Html, button, div, span, text)
+import Wheel exposing (wheelView)
+
+main : Program Never Model Msg
+main =
+  Html.beginnerProgram { model = model, view = view, update = update }
 
 type Model
     = AttackingPlayerEnter
     | DefendingPlayerEnter
     | CombatResolution
 
+model : Model
+model = AttackingPlayerEnter
+
+type Msg = NoOP
+
+update : Msg -> Model -> Model
+update msg model = model
 
 type alias Player =
     { power : Power
@@ -38,3 +51,7 @@ type PowerCard
     | PowerCard3
     | PowerCard4
     | PowerCard5
+
+
+view : Model -> Html Msg
+view model = wheelView model
