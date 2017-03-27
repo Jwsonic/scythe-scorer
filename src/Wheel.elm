@@ -1,35 +1,45 @@
-module Wheel exposing (wheelView)
+module Wheel exposing (..)
 
-import WheelStyle exposing (..)
+import Css exposing (deg, rotate, transform)
 import Html exposing (..)
-import Html.Attributes exposing (class, id)
+import Html.Attributes exposing (src)
+import Html.Events exposing (on)
+import Json.Decode as Json
+import Msg exposing (..)
+import Model exposing (..)
 
-wheelView :  model -> Html msg
-wheelView model = div [ id "wheelExt", wheelExtStyle ]
-    [ div [ id "wheel" ]
-        [ div [ class "wheel_part color01" ]
+
+style : List Css.Mixin -> Html.Attribute Msg
+style =
+    Css.asPairs >> Html.Attributes.style
+
+
+wheelView : Model -> Html Msg
+wheelView model =
+    let
+        rotation =
+            case model of
+                AttackingPlayerEnter r ->
+                    r
+
+                _ ->
+                    0
+    in
+        img
+            [ src "power_dial_1.png"
+            , style [ transform <| rotate <| deg rotation ]
+            , onWheelClick
+            ]
             []
-        , div [ class "wheel_part color02" ]
-            []
-        , div [ class "wheel_part color03" ]
-            []
-        , div [ class "wheel_part color04" ]
-            []
-        , div [ class "wheel_part word color05" ]
-            []
-        , div [ class "wheel_part word color06" ]
-            []
-        , span [ class "wheel_part word word01" ]
-            [ text "Spinning" ]
-        , span [ class "wheel_part word word02" ]
-            [ text "The" ]
-        , span [ class "wheel_part word word03" ]
-            [ text "Circle" ]
-        , span [ class "wheel_part word word04" ]
-            [ text "Is" ]
-        , span [ class "wheel_part word word05" ]
-            [ text "Super" ]
-        , span [ class "wheel_part word word06" ]
-            [ text "Exciting" ]
-        ]
-    ]
+
+
+onWheelClick : Attribute Msg
+onWheelClick =
+    on "click" (Json.map WheelClick mouseClickPoint)
+
+
+mouseClickPoint : Json.Decoder MouseClickPoint
+mouseClickPoint =
+    Json.map2 MouseClickPoint
+        (Json.field "clientX" Json.float)
+        (Json.field "clientY" Json.float)

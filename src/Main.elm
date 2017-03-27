@@ -1,24 +1,30 @@
 module Main exposing (..)
 
-import Html exposing (Html, button, div, span, text)
+import Html exposing (Html, button, div, span, text, img)
 import Wheel exposing (wheelView)
+import Msg exposing (..)
+import Model exposing (..)
+
 
 main : Program Never Model Msg
 main =
-  Html.beginnerProgram { model = model, view = view, update = update }
+    Html.beginnerProgram { model = model, view = view, update = update }
 
-type Model
-    = AttackingPlayerEnter
-    | DefendingPlayerEnter
-    | CombatResolution
 
 model : Model
-model = AttackingPlayerEnter
+model =
+    AttackingPlayerEnter 0
 
-type Msg = NoOP
 
 update : Msg -> Model -> Model
-update msg model = model
+update msg model =
+    case msg of
+        WheelClick { clientX, clientY } ->
+            AttackingPlayerEnter <| (atan2 (clientY - 180) (clientX - 180)) * 180 / pi + 90
+
+        _ ->
+            model
+
 
 type alias Player =
     { power : Power
@@ -54,4 +60,5 @@ type PowerCard
 
 
 view : Model -> Html Msg
-view model = wheelView model
+view model =
+    wheelView model
