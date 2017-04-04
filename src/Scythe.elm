@@ -153,17 +153,9 @@ powerDial power =
     let
         options =
             List.range 0 7 |> optionBuilder power
-
-        inputMapper str =
-            case String.toInt str of
-                Ok power ->
-                    SetPower power
-
-                Err _ ->
-                    SetPower 0
     in
         select
-            [ onInput inputMapper
+            [ onInput <| inputMapper SetPower
             ]
             options
 
@@ -173,19 +165,21 @@ powerCard card =
     let
         options =
             optionBuilder card [ 0, 2, 3, 4, 5 ]
-
-        inputMapper str =
-            case String.toInt str of
-                Ok card ->
-                    SetCard card
-
-                Err _ ->
-                    SetCard 0
     in
         select
-            [ onInput inputMapper
+            [ onInput <| inputMapper SetCard
             ]
             options
+
+
+inputMapper : (Int -> Msg) -> String -> Msg
+inputMapper msg str =
+    case String.toInt str of
+        Ok card ->
+            msg card
+
+        Err _ ->
+            msg 0
 
 
 optionBuilder : Int -> List Int -> List (Html Msg)
