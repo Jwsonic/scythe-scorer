@@ -180,7 +180,7 @@ powerCard card =
                     SetCard card
 
                 Err _ ->
-                    SetPower 0
+                    SetCard 0
     in
         select
             [ onInput inputMapper
