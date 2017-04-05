@@ -20,7 +20,7 @@ type Page
 type Msg
     = SetPower Int
     | SetCard Int
-    | SetPage Page
+    | NextPage
     | Reset
 
 
@@ -55,8 +55,8 @@ update msg model =
         Reset ->
             initialModel
 
-        SetPage newPage ->
-            { model | page = newPage }
+        NextPage ->
+            { model | page = updatePage model.page }
 
         _ ->
             case model.page of
@@ -70,32 +70,42 @@ update msg model =
                     model
 
 
+updatePage : Page -> Page
+updatePage page =
+    case page of
+        Attacking ->
+            Defending
+
+        _ ->
+            Results
+
+
 updatePlayer : Msg -> Player -> Player
 updatePlayer msg player =
     case msg of
         SetPower newPower ->
-            setPlayerPower player newPower
+            setPower player newPower
 
         SetCard newCard ->
-            setPlayerCard player newCard
+            setCard player newCard
 
         _ ->
             player
 
 
-setPlayerPower : Player -> Int -> Player
-setPlayerPower player newPower =
+setPower : Player -> Int -> Player
+setPower player newPower =
     { player | power = newPower |> max 0 |> min 7 }
 
 
-setPlayerCard : Player -> Int -> Player
-setPlayerCard player newCard =
+setCard : Player -> Int -> Player
+setCard player newCard =
     let
         checkedNewCard =
             if newCard < 2 then
                 0
             else
-                newCard |> max 2 |> min 5
+                min 5 newCard
     in
         { player | card = checkedNewCard }
 
