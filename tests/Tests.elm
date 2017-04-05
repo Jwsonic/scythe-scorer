@@ -20,20 +20,24 @@ all =
                     Expect.equal (setPower initPlayer -1) initPlayer
             , test "Cant' add power > 7" <|
                 \() ->
-                    Expect.equal
-                        (setPower initPlayer 8)
-                        { power = 7, card = 0 }
+                    Expect.equal (setPower initPlayer 8) initPlayer
+            , test "Set power if it's valid" <|
+                \() ->
+                    Expect.equal (setPower initPlayer 1)
+                        { initPlayer | power = 1 }
             ]
         , describe "setCard"
-            [ test "Can't add card < 0" <|
+            [ test "Can't set card < 0" <|
                 \() ->
                     Expect.equal (setCard initPlayer -1) initPlayer
-            , test "Cant' add card > 5" <|
+            , test "Can't set card > 5" <|
                 \() ->
-                    Expect.equal (setCard initPlayer 6) { power = 0, card = 5 }
-            , test "Can't add card == 1" <|
+                    Expect.equal (setCard initPlayer 6) initPlayer
+            , test "Can't set card == 1" <|
                 \() ->
                     Expect.equal (setCard initPlayer 1) initPlayer
+            , test "Set card if it's valid" <|
+                \() -> Expect.equal (setCard initPlayer 3) { initPlayer | card = 3 }
             ]
         , describe "updatePlayer"
             [ test "handles SetPower" <|
@@ -125,5 +129,19 @@ all =
                             | defendingPlayer = { power = 0, card = 4 }
                             , page = Defending
                         }
+            ]
+        , describe "isValidPower"
+            [ test "valid powers are 0-7" <|
+                \() ->
+                    Expect.equal
+                        (List.map isValidPower powers)
+                        (List.repeat (List.length powers) True)
+            ]
+        , describe "isValidCard"
+            [ test "valid cards are [0, 2, 3, 4, 5]" <|
+                \() ->
+                    Expect.equal
+                        (List.map isValidCard cards)
+                        (List.repeat (List.length cards) True)
             ]
         ]

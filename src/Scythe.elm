@@ -5,6 +5,26 @@ import Html.Attributes exposing (selected, value)
 import Html.Events exposing (..)
 
 
+powers : List Int
+powers =
+    List.range 0 7
+
+
+isValidPower : Int -> Bool
+isValidPower =
+    flip List.member powers
+
+
+cards : List Int
+cards =
+    [ 0, 2, 3, 4, 5 ]
+
+
+isValidCard : Int -> Bool
+isValidCard =
+    flip List.member cards
+
+
 type alias Player =
     { power : Int
     , card : Int
@@ -95,19 +115,24 @@ updatePlayer msg player =
 
 setPower : Player -> Int -> Player
 setPower player newPower =
-    { player | power = newPower |> max 0 |> min 7 }
+    { player
+        | power =
+            if isValidPower newPower then
+                newPower
+            else
+                0
+    }
 
 
 setCard : Player -> Int -> Player
 setCard player newCard =
-    let
-        checkedNewCard =
-            if newCard < 2 then
-                0
+    { player
+        | card =
+            if isValidCard newCard then
+                newCard
             else
-                min 5 newCard
-    in
-        { player | card = checkedNewCard }
+                0
+    }
 
 
 view : Model -> Html Msg
@@ -162,7 +187,7 @@ powerDial : Int -> Html Msg
 powerDial power =
     let
         options =
-            List.range 0 7 |> optionBuilder power
+            optionBuilder power powers
     in
         select
             [ onInput <| inputMapper SetPower
@@ -174,7 +199,7 @@ powerCard : Int -> Html Msg
 powerCard card =
     let
         options =
-            optionBuilder card [ 0, 2, 3, 4, 5 ]
+            optionBuilder card cards
     in
         select
             [ onInput <| inputMapper SetCard
