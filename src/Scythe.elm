@@ -139,10 +139,10 @@ view : Model -> Html Msg
 view model =
     case model.page of
         Attacking ->
-            playerView model.attackingPlayer
+            attackingPlayerView model.attackingPlayer
 
         Defending ->
-            playerView model.defendingPlayer
+            defendingPlayerView model.defendingPlayer
 
         Results ->
             resultsView model
@@ -150,23 +150,41 @@ view model =
 
 resultsView : Model -> Html Msg
 resultsView { attackingPlayer, defendingPlayer } =
+    div []
+        [ text <| (winnerText attackingPlayer defendingPlayer) ++ " won!"
+        , resetButton
+        ]
+
+
+winnerText : Player -> Player -> String
+winnerText attackingPlayer defendingPlayer =
     let
         attackingTotal =
             attackingPlayer.power + attackingPlayer.card
 
         defendingtotal =
             defendingPlayer.power + defendingPlayer.card
-
-        winnerText =
-            if attackingTotal >= defendingtotal then
-                "Attacking"
-            else
-                "Defending"
     in
-        div []
-            [ text <| winnerText ++ "won!"
-            , resetButton
-            ]
+        if attackingTotal >= defendingtotal then
+            "Attacking"
+        else
+            "Defending"
+
+
+attackingPlayerView : Player -> Html Msg
+attackingPlayerView player =
+    div []
+        [ playerView player
+        , nextButton "Next Player's Turn"
+        ]
+
+
+defendingPlayerView : Player -> Html Msg
+defendingPlayerView player =
+    div []
+        [ playerView player
+        , nextButton "View results"
+        ]
 
 
 playerView : Player -> Html Msg
@@ -209,12 +227,7 @@ powerCard card =
 
 inputMapper : (Int -> Msg) -> String -> Msg
 inputMapper msg str =
-    case String.toInt str of
-        Ok card ->
-            msg card
-
-        Err _ ->
-            msg 0
+    String.toInt str |> Result.withDefault 0 |> msg
 
 
 optionBuilder : Int -> List Int -> List (Html Msg)
@@ -233,3 +246,8 @@ optionBuilder i =
 resetButton : Html Msg
 resetButton =
     button [ onClick Reset ] [ text "Reset" ]
+
+
+nextButton : String -> Html Msg
+nextButton string =
+    button [ onClick NextPage ] [ text string ]

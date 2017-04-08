@@ -144,4 +144,12 @@ all =
                         (List.map isValidCard cards)
                         (List.repeat (List.length cards) True)
             ]
+        , describe "winnerText"
+            [ test "returns 'Attacking' when the attacking player wins" <|
+                \() -> Expect.equal (winnerText { power = 2, card = 0 } initPlayer) "Attacking"
+            , test "returns 'Defending' when the defending player wins" <|
+                \() -> Expect.equal (winnerText initPlayer { power = 2, card = 0 }) "Defending"
+            , test "returns 'Attacking' when there is a tie" <|
+                \() -> Expect.equal (winnerText initPlayer initPlayer) "Attacking"
+            ]
         ]
