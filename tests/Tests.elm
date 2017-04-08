@@ -3,11 +3,6 @@ module Tests exposing (..)
 import Expect
 import Scythe exposing (..)
 import Test exposing (..)
-
-
--- import Fuzz exposing (list, int, tuple, string)
--- import String
-
 import Scythe exposing (..)
 
 

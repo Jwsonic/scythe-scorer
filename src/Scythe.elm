@@ -5,29 +5,45 @@ import Html.Attributes exposing (selected, value)
 import Html.Events exposing (..)
 
 
+{-| The valid power choices in Scythe are 0-7
+-}
 powers : List Int
 powers =
     List.range 0 7
 
 
+{-| isValidPower checks if an Int is a valid power value
+-}
 isValidPower : Int -> Bool
 isValidPower =
     flip List.member powers
 
 
+{-| In Scythe there are only 2,3,4 value card. The value 0 is used to represent no card selected
+-}
 cards : List Int
 cards =
     [ 0, 2, 3, 4, 5 ]
 
 
+{-| isValidCard checks if an Int is a valid card value
+-}
 isValidCard : Int -> Bool
 isValidCard =
     flip List.member cards
 
 
+type alias Power =
+    Int
+
+
+type alias Card =
+    Int
+
+
 type alias Player =
-    { power : Int
-    , card : Int
+    { power : Power
+    , card : Card
     }
 
 
@@ -38,8 +54,8 @@ type Page
 
 
 type Msg
-    = SetPower Int
-    | SetCard Int
+    = SetPower Power
+    | SetCard Card
     | NextPage
     | Reset
 
@@ -72,6 +88,7 @@ initialModel =
 update : Msg -> Model -> Model
 update msg model =
     case msg of
+        -- Reset is the same for any page, just reset the model
         Reset ->
             initialModel
 
@@ -93,13 +110,17 @@ update msg model =
 updatePage : Page -> Page
 updatePage page =
     case page of
+        -- Defending always follows Attacking
         Attacking ->
             Defending
 
+        -- Results always follows Defending(and Results)
         _ ->
             Results
 
 
+{-| updatePlayer handles the data update for a specific player
+-}
 updatePlayer : Msg -> Player -> Player
 updatePlayer msg player =
     case msg of
@@ -113,25 +134,29 @@ updatePlayer msg player =
             player
 
 
-setPower : Player -> Int -> Player
+{-| setPower sets the player's new power if it's a valid power
+-}
+setPower : Player -> Power -> Player
 setPower player newPower =
     { player
         | power =
             if isValidPower newPower then
                 newPower
             else
-                0
+                player.power
     }
 
 
-setCard : Player -> Int -> Player
+{-| setCard sets the player's new card if it's a calid card
+-}
+setCard : Player -> Card -> Player
 setCard player newCard =
     { player
         | card =
             if isValidCard newCard then
                 newCard
             else
-                0
+                player.card
     }
 
 
@@ -148,6 +173,8 @@ view model =
             resultsView model
 
 
+{-| handles the drawing of the Results Page
+-}
 resultsView : Model -> Html Msg
 resultsView { attackingPlayer, defendingPlayer } =
     div []
@@ -156,6 +183,8 @@ resultsView { attackingPlayer, defendingPlayer } =
         ]
 
 
+{-| winnerText determines who the winner was and returns the proper text. Ties go to the attackingPlayer.
+-}
 winnerText : Player -> Player -> String
 winnerText attackingPlayer defendingPlayer =
     let
@@ -187,6 +216,8 @@ defendingPlayerView player =
         ]
 
 
+{-| playerView handles drawing the player agnostic view for the current player
+-}
 playerView : Player -> Html Msg
 playerView player =
     let
@@ -195,14 +226,14 @@ playerView player =
     in
         div []
             [ text <| "Your current power is " ++ currentPowerStr
-            , powerDial player.power
-            , powerCard player.card
+            , selectPower player.power
+            , selectCard player.card
             , resetButton
             ]
 
 
-powerDial : Int -> Html Msg
-powerDial power =
+selectPower : Power -> Html Msg
+selectPower power =
     let
         options =
             optionBuilder power powers
@@ -213,8 +244,8 @@ powerDial power =
             options
 
 
-powerCard : Int -> Html Msg
-powerCard card =
+selectCard : Card -> Html Msg
+selectCard card =
     let
         options =
             optionBuilder card cards
@@ -225,6 +256,8 @@ powerCard card =
             options
 
 
+{-| inputMapper turns a <select> change into a valid Msg
+-}
 inputMapper : (Int -> Msg) -> String -> Msg
 inputMapper msg str =
     String.toInt str |> Result.withDefault 0 |> msg

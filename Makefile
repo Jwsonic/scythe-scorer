@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := run
-.PHONY: intstall run test
+.PHONY: intstall run test build deploy
 
 install:
 	yarn
@@ -10,3 +10,9 @@ run:
 
 test:
 	./node_modules/.bin/elm-test
+
+build: intstall
+	./node_modules/.bin/elm-make src/Scythe.elm --output dist/scythe.js
+
+deploy: build
+	./node_modules/.bin/gh-pages-deploy

@@ -7,6 +7,10 @@
   "license": "MIT",
   "dependencies": {
     "elm": "^0.18.0",
-    "elm-test": "^0.18.2"
+    "elm-test": "^0.18.2",
+    "gh-pages-deploy": "^0.4.2"
+  },
+  "gh-pages-deploy": {
+    "staticpath": "dist"
   }
 }
