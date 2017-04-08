@@ -1,7 +1,7 @@
 module Scythe exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (selected, value)
+import Html.Attributes exposing (class, for, id, selected, value)
 import Html.Events exposing (..)
 
 
@@ -162,25 +162,34 @@ setCard player newCard =
 
 view : Model -> Html Msg
 view model =
-    case model.page of
-        Attacking ->
-            attackingPlayerView model.attackingPlayer
+    let
+        body =
+            case model.page of
+                Attacking ->
+                    attackingPlayerView model.attackingPlayer
 
-        Defending ->
-            defendingPlayerView model.defendingPlayer
+                Defending ->
+                    defendingPlayerView model.defendingPlayer
 
-        Results ->
-            resultsView model
+                Results ->
+                    resultsView model
+    in
+        div [ class "container" ]
+            [ div [ class "row" ]
+                [ div [ class "col" ]
+                    body
+                ]
+            ]
 
 
 {-| handles the drawing of the Results Page
 -}
-resultsView : Model -> Html Msg
+resultsView : Model -> List (Html Msg)
 resultsView { attackingPlayer, defendingPlayer } =
-    div []
-        [ text <| (winnerText attackingPlayer defendingPlayer) ++ " won!"
-        , resetButton
-        ]
+    [ text <| (winnerText attackingPlayer defendingPlayer) ++ " player wins!"
+    , br [] []
+    , resetButton
+    ]
 
 
 {-| winnerText determines who the winner was and returns the proper text. Ties go to the attackingPlayer.
@@ -200,60 +209,54 @@ winnerText attackingPlayer defendingPlayer =
             "Defending"
 
 
-attackingPlayerView : Player -> Html Msg
-attackingPlayerView player =
-    div []
-        [ playerView player
-        , nextButton "Next Player's Turn"
-        ]
+attackingPlayerView : Player -> List (Html Msg)
+attackingPlayerView =
+    playerView "Attacking players turn." "Next Player's Turn"
 
 
-defendingPlayerView : Player -> Html Msg
-defendingPlayerView player =
-    div []
-        [ playerView player
-        , nextButton "View results"
-        ]
+defendingPlayerView : Player -> List (Html Msg)
+defendingPlayerView =
+    playerView "Defending players turn." "View results"
 
 
 {-| playerView handles drawing the player agnostic view for the current player
 -}
-playerView : Player -> Html Msg
-playerView player =
+playerView : String -> String -> Player -> List (Html Msg)
+playerView titleText nextText player =
     let
         currentPowerStr =
             toString <| player.power + player.card
     in
-        div []
-            [ text <| "Your current power is " ++ currentPowerStr
-            , selectPower player.power
-            , selectCard player.card
-            , resetButton
-            ]
+        [ h1 [] [ text titleText ]
+        , h2 [] [ text <| "Your current power is " ++ currentPowerStr ++ "." ]
+        , selectPower player.power
+        , selectCard player.card
+        , resetButton
+        , nextButton nextText
+        ]
 
 
 selectPower : Power -> Html Msg
 selectPower power =
-    let
-        options =
-            optionBuilder power powers
-    in
-        select
-            [ onInput <| inputMapper SetPower
-            ]
-            options
+    selectForm (optionBuilder power powers) "power" (inputMapper SetPower)
 
 
 selectCard : Card -> Html Msg
 selectCard card =
-    let
-        options =
-            optionBuilder card cards
-    in
-        select
-            [ onInput <| inputMapper SetCard
+    selectForm (optionBuilder card cards) "card" (inputMapper SetCard)
+
+
+selectForm : List (Html msg) -> String -> (String -> msg) -> Html msg
+selectForm options label_ mapper =
+    div [ class "form-group" ]
+        [ label [ for "power" ] [ text <| "Select your " ++ label_ ]
+        , select
+            [ onInput mapper
+            , id label_
+            , class "form-control"
             ]
             options
+        ]
 
 
 {-| inputMapper turns a <select> change into a valid Msg
@@ -278,9 +281,17 @@ optionBuilder i =
 
 resetButton : Html Msg
 resetButton =
-    button [ onClick Reset ] [ text "Reset" ]
+    button
+        [ onClick Reset
+        , class "btn btn-danger"
+        ]
+        [ text "Reset" ]
 
 
 nextButton : String -> Html Msg
 nextButton string =
-    button [ onClick NextPage ] [ text string ]
+    button
+        [ onClick NextPage
+        , class "btn btn-primary"
+        ]
+        [ text string ]
