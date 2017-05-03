@@ -1,50 +1,9 @@
 module Scythe exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, for, id, selected, value)
+import Html.Attributes exposing (class, for, id, selected, type_, value)
 import Html.Events exposing (..)
-
-
-{-| The valid power choices in Scythe are 0-7
--}
-powers : List Int
-powers =
-    List.range 0 7
-
-
-{-| isValidPower checks if an Int is a valid power value
--}
-isValidPower : Int -> Bool
-isValidPower =
-    flip List.member powers
-
-
-{-| In Scythe there are only 2,3,4 value card. The value 0 is used to represent no card selected
--}
-cards : List Int
-cards =
-    [ 0, 2, 3, 4, 5 ]
-
-
-{-| isValidCard checks if an Int is a valid card value
--}
-isValidCard : Int -> Bool
-isValidCard =
-    flip List.member cards
-
-
-type alias Power =
-    Int
-
-
-type alias Card =
-    Int
-
-
-type alias Player =
-    { power : Power
-    , card : Card
-    }
+import Player exposing (..)
 
 
 type Page
@@ -55,7 +14,8 @@ type Page
 
 type Msg
     = SetPower Power
-    | SetCard Card
+    | AddCard Card
+    | RemoveCard Int
     | NextPage
     | Reset
 
@@ -70,11 +30,6 @@ type alias Model =
 main : Program Never Model Msg
 main =
     Html.beginnerProgram { model = initialModel, view = view, update = update }
-
-
-initPlayer : Player
-initPlayer =
-    { power = 0, card = 0 }
 
 
 initialModel : Model
@@ -125,39 +80,16 @@ updatePlayer : Msg -> Player -> Player
 updatePlayer msg player =
     case msg of
         SetPower newPower ->
-            setPower player newPower
+            setPower newPower player
 
-        SetCard newCard ->
-            setCard player newCard
+        AddCard newCard ->
+            addCard newCard player
+
+        RemoveCard index ->
+            removeCard index player
 
         _ ->
             player
-
-
-{-| setPower sets the player's new power if it's a valid power
--}
-setPower : Player -> Power -> Player
-setPower player newPower =
-    { player
-        | power =
-            if isValidPower newPower then
-                newPower
-            else
-                player.power
-    }
-
-
-{-| setCard sets the player's new card if it's a calid card
--}
-setCard : Player -> Card -> Player
-setCard player newCard =
-    { player
-        | card =
-            if isValidCard newCard then
-                newCard
-            else
-                player.card
-    }
 
 
 view : Model -> Html Msg
@@ -186,27 +118,26 @@ view model =
 -}
 resultsView : Model -> List (Html Msg)
 resultsView { attackingPlayer, defendingPlayer } =
-    [ text <| (winnerText attackingPlayer defendingPlayer) ++ " player wins!"
-    , br [] []
-    , resetButton
-    ]
-
-
-{-| winnerText determines who the winner was and returns the proper text. Ties go to the attackingPlayer.
--}
-winnerText : Player -> Player -> String
-winnerText attackingPlayer defendingPlayer =
     let
         attackingTotal =
-            attackingPlayer.power + attackingPlayer.card
+            totalPower attackingPlayer
 
         defendingtotal =
-            defendingPlayer.power + defendingPlayer.card
+            totalPower defendingPlayer
+
+        buildText prefix player =
+            prefix ++ " player wins with a total power of " ++ (totalPower player |> toString) ++ "!"
+
+        resultText =
+            if attackingTotal >= defendingtotal then
+                buildText "Attacking" attackingPlayer
+            else
+                buildText "Defending" defendingPlayer
     in
-        if attackingTotal >= defendingtotal then
-            "Attacking"
-        else
-            "Defending"
+        [ text resultText
+        , br [] []
+        , resetButton
+        ]
 
 
 attackingPlayerView : Player -> List (Html Msg)
@@ -225,25 +156,28 @@ playerView : String -> String -> Player -> List (Html Msg)
 playerView titleText nextText player =
     let
         currentPowerStr =
-            toString <| player.power + player.card
+            totalPower player |> toString
     in
         [ h1 [] [ text titleText ]
-        , h2 [] [ text <| "Your current power is " ++ currentPowerStr ++ "." ]
-        , selectPower player.power
-        , selectCard player.card
-        , resetButton
-        , nextButton nextText
+        , h2 [] [ text <| "Your current total power is " ++ currentPowerStr ++ "." ]
+        , selectPower <| getPower player
+        , selectCard
+        , cardsListGroup <| getCards player
+        , div []
+            [ resetButton
+            , nextButton nextText
+            ]
         ]
 
 
 selectPower : Power -> Html Msg
 selectPower power =
-    selectForm (optionBuilder power powers) "power" (inputMapper SetPower)
+    selectForm (optionBuilder power allPower) "power" (stringToPower >> SetPower)
 
 
-selectCard : Card -> Html Msg
-selectCard card =
-    selectForm (optionBuilder card cards) "card" (inputMapper SetCard)
+selectCard : Html Msg
+selectCard =
+    selectForm (optionBuilder 0 allCards) "card" (stringToCard >> AddCard)
 
 
 selectForm : List (Html msg) -> String -> (String -> msg) -> Html msg
@@ -279,11 +213,32 @@ optionBuilder i =
         List.map makeOption
 
 
+cardsListGroup : List Card -> Html Msg
+cardsListGroup cards =
+    ul [ class "list-group" ] <| List.indexedMap cardListItem cards
+
+
+cardListItem : Int -> Card -> Html Msg
+cardListItem index card =
+    li
+        [ class "list-group-item"
+        ]
+        [ text <| "Card " ++ (toString card)
+        , button
+            [ type_ "button"
+            , class "close float-right"
+            , onClick <| RemoveCard index
+            ]
+            [ span [ class "text-danger" ] [ text "×" ] ]
+        ]
+
+
 resetButton : Html Msg
 resetButton =
     button
         [ onClick Reset
         , class "btn btn-danger"
+        , type_ "button"
         ]
         [ text "Reset" ]
 
@@ -293,5 +248,6 @@ nextButton string =
     button
         [ onClick NextPage
         , class "btn btn-primary"
+        , type_ "button"
         ]
         [ text string ]

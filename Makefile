@@ -6,7 +6,7 @@ install:
 	elm package install
 
 run:
-	./node_modules/.bin/elm-reactor
+	./node_modules/.bin/elm-reactor -a 0.0.0.0
 
 test:
 	./node_modules/.bin/elm-test

@@ -12,5 +12,6 @@
   },
   "gh-pages-deploy": {
     "staticpath": "dist"
-  }
+  },
+  "devDependencies": {}
 }
