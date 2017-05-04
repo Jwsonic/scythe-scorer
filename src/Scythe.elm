@@ -215,21 +215,23 @@ optionBuilder i =
 
 cardsListGroup : List Card -> Html Msg
 cardsListGroup cards =
-    ul [ class "list-group" ] <| List.indexedMap cardListItem cards
+    div [ class "form-group" ] [ ul [ class "list-group" ] <| List.indexedMap cardListItem cards ]
 
 
 cardListItem : Int -> Card -> Html Msg
 cardListItem index card =
     li
-        [ class "list-group-item"
+        [ class "list-group-item justify-content-between"
         ]
         [ text <| "Card " ++ (toString card)
-        , button
-            [ type_ "button"
-            , class "close float-right"
-            , onClick <| RemoveCard index
+        , span [ class "float-right" ]
+            [ button
+                [ type_ "button"
+                , class "close"
+                , onClick <| RemoveCard index
+                ]
+                [ span [ class "text-danger" ] [ text "×" ] ]
             ]
-            [ span [ class "text-danger" ] [ text "×" ] ]
         ]
 
 
