@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (class, for, id, selected, type_, value)
 import Html.Events exposing (..)
 import Player exposing (..)
+import Power exposing (..)
 
 
 type Page
