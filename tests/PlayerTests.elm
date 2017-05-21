@@ -69,7 +69,7 @@ addCardTests =
                     |> updatePlayer (AddCard <| Ok 5)
                     |> updatePlayer (AddCard <| Ok 2)
                     |> getCards
-                    |> Expect.equal [ 2, 5 ]
+                    |> Expect.equal [ 5, 2 ]
         , test "adding an invalid cards does not work" <|
             \_ ->
                 initPlayer
@@ -86,18 +86,18 @@ removeCardTests =
             \_ ->
                 initPlayer
                     |> updatePlayer (AddCard <| Ok 4)
-                    |> updatePlayer (AddCard <| Ok 2)
+                    |> updatePlayer (AddCard <| Ok 3)
                     |> updatePlayer (AddCard <| Ok 2)
                     |> updatePlayer (RemoveCard 1)
                     |> getCards
-                    |> Expect.equal [ 2, 4 ]
+                    |> Expect.equal [ 4, 2 ]
         , test "removing a card not in the player's hand does nothing" <|
             \_ ->
                 initPlayer
                     |> updatePlayer (AddCard <| Ok 4)
-                    |> updatePlayer (AddCard <| Ok 2)
+                    |> updatePlayer (AddCard <| Ok 3)
                     |> updatePlayer (AddCard <| Ok 2)
                     |> updatePlayer (RemoveCard 10)
                     |> getCards
-                    |> Expect.equal [ 2, 2, 4 ]
+                    |> Expect.equal [ 4, 3, 2 ]
         ]

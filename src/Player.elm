@@ -71,7 +71,7 @@ addCard resultCard ((Player power cards) as player) =
     in
         case resultCard_ of
             Ok newCard ->
-                Player power (newCard :: cards)
+                Player power (cards ++ [ newCard ])
 
             Err _ ->
                 player
