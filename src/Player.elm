@@ -10,8 +10,6 @@ module Player
         )
 
 import Card exposing (..)
-import Html exposing (..)
-import Html.SelectPrism exposing (selectp)
 import List.Extra exposing (removeAt)
 import Power exposing (..)
 import Result exposing (andThen)
@@ -105,25 +103,3 @@ getCards (Player power cards) =
 getPower : Player -> Power
 getPower (Player power cards) =
     power
-
-
-{-| options for the power <select />
--}
-powerOptions : List ( String, Power )
-powerOptions =
-    List.map (\p -> ( powerToLabel p, p )) allPowers
-
-
-powerSelect : Player -> Html Msg
-powerSelect (Player power cards) =
-    selectp powerPrism SetPower power [] powerOptions
-
-
-cardOptions : List ( String, Card )
-cardOptions =
-    List.map (\c -> ( cardToLabel c, c )) allCards
-
-
-cardSelect : Html Msg
-cardSelect =
-    selectp cardPrism AddCard 0 [] cardOptions

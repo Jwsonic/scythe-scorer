@@ -1,8 +1,10 @@
 module Scythe exposing (..)
 
+import Card exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (class, for, id, selected, type_, value)
 import Html.Events exposing (..)
+import Html.SelectPrism exposing (selectp)
 import Player exposing (..)
 import Power exposing (..)
 
@@ -14,9 +16,8 @@ type Page
 
 
 type Msg
-    = SetPower Power
-    | AddCard Card
-    | RemoveCard Int
+    = PlayerMsg Player.Msg
+    | SelectCard (Result String Card)
     | NextPage
     | Reset
 
@@ -25,6 +26,7 @@ type alias Model =
     { attackingPlayer : Player
     , defendingPlayer : Player
     , page : Page
+    , selectedCard : Result String Card
     }
 
 
@@ -38,6 +40,7 @@ initialModel =
     { attackingPlayer = initPlayer
     , defendingPlayer = initPlayer
     , page = Attacking
+    , selectedCard = Ok 0
     }
 
 
@@ -51,13 +54,16 @@ update msg model =
         NextPage ->
             { model | page = updatePage model.page }
 
-        _ ->
+        SelectCard card ->
+            { model | selectedCard = card }
+
+        PlayerMsg playerMsg ->
             case model.page of
                 Attacking ->
-                    { model | attackingPlayer = updatePlayer msg model.attackingPlayer }
+                    { model | attackingPlayer = updatePlayer playerMsg model.attackingPlayer }
 
                 Defending ->
-                    { model | defendingPlayer = updatePlayer msg model.defendingPlayer }
+                    { model | defendingPlayer = updatePlayer playerMsg model.defendingPlayer }
 
                 Results ->
                     model
@@ -73,24 +79,6 @@ updatePage page =
         -- Results always follows Defending(and Results)
         _ ->
             Results
-
-
-{-| updatePlayer handles the data update for a specific player
--}
-updatePlayer : Msg -> Player -> Player
-updatePlayer msg player =
-    case msg of
-        SetPower newPower ->
-            setPower newPower player
-
-        AddCard newCard ->
-            addCard newCard player
-
-        RemoveCard index ->
-            removeCard index player
-
-        _ ->
-            player
 
 
 view : Model -> Html Msg
@@ -126,14 +114,19 @@ resultsView { attackingPlayer, defendingPlayer } =
         defendingtotal =
             totalPower defendingPlayer
 
-        buildText prefix player =
-            prefix ++ " player wins with a total power of " ++ (totalPower player |> toString) ++ "!"
+        buildText prefix winningPlayer losingPlayer =
+            prefix
+                ++ " player wins with a total power of "
+                ++ (totalPower winningPlayer |> toString)
+                ++ " to "
+                ++ (totalPower losingPlayer |> toString)
+                ++ "!"
 
         resultText =
             if attackingTotal >= defendingtotal then
-                buildText "Attacking" attackingPlayer
+                buildText "Attacking" attackingPlayer defendingPlayer
             else
-                buildText "Defending" defendingPlayer
+                buildText "Defending" defendingPlayer attackingPlayer
     in
         [ text resultText
         , br [] []
@@ -161,8 +154,8 @@ playerView titleText nextText player =
     in
         [ h1 [] [ text titleText ]
         , h2 [] [ text <| "Your current total power is " ++ currentPowerStr ++ "." ]
-        , selectPower <| getPower player
-        , selectCard
+        , powerSelect player
+        , cardSelect
         , cardsListGroup <| getCards player
         , div []
             [ resetButton
@@ -171,47 +164,32 @@ playerView titleText nextText player =
         ]
 
 
-selectPower : Power -> Html Msg
-selectPower power =
-    selectForm (optionBuilder power allPower) "power" (stringToPower >> SetPower)
-
-
-selectCard : Html Msg
-selectCard =
-    selectForm (optionBuilder 0 allCards) "card" (stringToCard >> AddCard)
-
-
-selectForm : List (Html msg) -> String -> (String -> msg) -> Html msg
-selectForm options label_ mapper =
-    div [ class "form-group" ]
-        [ label [ for "power" ] [ text <| "Select your " ++ label_ ]
-        , select
-            [ onInput mapper
-            , id label_
-            , class "form-control"
-            ]
-            options
-        ]
-
-
-{-| inputMapper turns a <select> change into a valid Msg
+{-| <select /> for adding a new card
 -}
-inputMapper : (Int -> Msg) -> String -> Msg
-inputMapper msg str =
-    String.toInt str |> Result.withDefault 0 |> msg
+cardSelect : Html Msg
+cardSelect =
+    selectp cardPrism SelectCard 0 [ class "form-control" ] cardOptions
 
 
-optionBuilder : Int -> List Int -> List (Html Msg)
-optionBuilder i =
-    let
-        makeOption n =
-            option
-                [ selected <| n == i
-                , value <| toString n
-                ]
-                [ text <| toString n ]
-    in
-        List.map makeOption
+{-| <select /> for a player's power
+-}
+powerSelect : Player -> Html Msg
+powerSelect player =
+    selectp powerPrism (PlayerMsg << SetPower) (getPower player) [ class "form-control" ] powerOptions
+
+
+{-| <option />s for the power <select />
+-}
+powerOptions : List ( String, Power )
+powerOptions =
+    List.map (\p -> ( powerToLabel p, p )) allPowers
+
+
+{-| <option />s for the card <select />
+-}
+cardOptions : List ( String, Card )
+cardOptions =
+    List.map (\c -> ( cardToLabel c, c )) allCards
 
 
 cardsListGroup : List Card -> Html Msg
@@ -224,12 +202,12 @@ cardListItem index card =
     li
         [ class "list-group-item justify-content-between"
         ]
-        [ text <| "Card " ++ (toString card)
+        [ text <| cardToLabel card
         , span [ class "float-right" ]
             [ button
                 [ type_ "button"
                 , class "close"
-                , onClick <| RemoveCard index
+                , onClick <| PlayerMsg (RemoveCard index)
                 ]
                 [ span [ class "text-danger" ] [ text "×" ] ]
             ]
