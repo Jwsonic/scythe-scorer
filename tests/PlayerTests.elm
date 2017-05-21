@@ -17,36 +17,44 @@ totalPowerTests =
         [ test "player with power and no cards" <|
             \_ ->
                 initPlayer
-                    |> setPower 5
+                    |> updatePlayer (SetPower <| Ok 3)
                     |> totalPower
-                    |> Expect.equal 5
+                    |> Expect.equal 3
         , test "player with cards and no power" <|
             \_ ->
                 initPlayer
-                    |> addCard 3
-                    |> addCard 2
+                    |> updatePlayer (AddCard <| Ok 3)
+                    |> updatePlayer (AddCard <| Ok 2)
                     |> totalPower
                     |> Expect.equal 5
         , test "player with cards and power" <|
             \_ ->
                 initPlayer
-                    |> setPower 4
-                    |> addCard 3
-                    |> addCard 3
-                    |> addCard 2
+                    |> updatePlayer (SetPower <| Ok 4)
+                    |> updatePlayer (AddCard <| Ok 3)
+                    |> updatePlayer (AddCard <| Ok 2)
                     |> totalPower
-                    |> Expect.equal 12
+                    |> Expect.equal 9
+        , test "player with no cards and no power" <|
+            \_ ->
+                initPlayer
+                    |> totalPower
+                    |> Expect.equal 0
         ]
 
 
 setPowerTests : Test
 setPowerTests =
-    describe "setPower"
+    describe "SetPower"
         [ test "setting an invalid power doesn't work" <|
-            \_ -> setPower -1 initPlayer |> Expect.equal initPlayer
+            \_ ->
+                initPlayer
+                    |> updatePlayer (SetPower <| Ok -1)
+                    |> Expect.equal initPlayer
         , test "setting a valid power works" <|
             \_ ->
-                setPower 5 initPlayer
+                initPlayer
+                    |> updatePlayer (SetPower <| Ok 5)
                     |> getPower
                     |> Expect.equal 5
         ]
@@ -57,13 +65,15 @@ addCardTests =
     describe "addCard"
         [ test "adding a valid card works" <|
             \_ ->
-                addCard 4 initPlayer
-                    |> addCard 2
+                initPlayer
+                    |> updatePlayer (AddCard <| Ok 5)
+                    |> updatePlayer (AddCard <| Ok 2)
                     |> getCards
-                    |> Expect.equal [ 2, 4 ]
+                    |> Expect.equal [ 2, 5 ]
         , test "adding an invalid cards does not work" <|
             \_ ->
-                addCard -4 initPlayer
+                initPlayer
+                    |> updatePlayer (AddCard <| Ok -1)
                     |> getCards
                     |> Expect.equal []
         ]
@@ -74,18 +84,20 @@ removeCardTests =
     describe "removeCard"
         [ test "removing a card in the player's hand works" <|
             \_ ->
-                addCard 4 initPlayer
-                    |> addCard 2
-                    |> addCard 2
-                    |> removeCard 1
+                initPlayer
+                    |> updatePlayer (AddCard <| Ok 4)
+                    |> updatePlayer (AddCard <| Ok 2)
+                    |> updatePlayer (AddCard <| Ok 2)
+                    |> updatePlayer (RemoveCard 1)
                     |> getCards
                     |> Expect.equal [ 2, 4 ]
         , test "removing a card not in the player's hand does nothing" <|
             \_ ->
-                addCard 4 initPlayer
-                    |> addCard 2
-                    |> addCard 2
-                    |> removeCard 10
+                initPlayer
+                    |> updatePlayer (AddCard <| Ok 4)
+                    |> updatePlayer (AddCard <| Ok 2)
+                    |> updatePlayer (AddCard <| Ok 2)
+                    |> updatePlayer (RemoveCard 10)
                     |> getCards
                     |> Expect.equal [ 2, 2, 4 ]
         ]

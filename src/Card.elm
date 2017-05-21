@@ -1,47 +1,50 @@
 module Card exposing (..)
 
 import Monocle.Prism exposing (Prism)
+import Point exposing (..)
 
 
 type alias Card =
-    Int
+    Point
 
 
+{-| allCards is a List of every valid Card value
+-}
 allCards : List Card
 allCards =
     List.range 2 5
 
 
-isValidCard : Card -> Bool
-isValidCard card =
-    List.member card allCards
+{-| errMsg is an internal function used to construct a Card error message
+-}
+errMsg : Card -> String
+errMsg card =
+    (toString card) ++ " is not a valid card"
 
 
+{-| intToCard attempts to transform and Int into a Card
+-}
 intToCard : Int -> Result String Card
-intToCard int =
-    if isValidCard int then
-        Ok int
-    else
-        Err <| (toString int) ++ " is not a valid card"
+intToCard =
+    intToPoint errMsg allCards
 
 
+{-| stringToCard attempts to transform a String into a Card
+-}
 stringToCard : String -> Result String Card
-stringToCard string =
-    string
-        |> String.toInt
-        |> Result.andThen intToCard
+stringToCard =
+    stringToPoint intToCard
 
 
+{-| cardPrism is a Prism for converting between a String and a Card
+-}
 cardPrism : Prism String Card
 cardPrism =
-    let
-        maybeCard : String -> Maybe Card
-        maybeCard =
-            stringToCard >> Result.toMaybe
-    in
-        Prism maybeCard toString
+    pointPrism stringToCard
 
 
+{-| cardToLabel is a function for generating a label String froma  given power
+-}
 cardToLabel : Card -> String
 cardToLabel card =
     "Card " ++ (toString card)

@@ -1,10 +1,10 @@
 module Tests exposing (..)
 
 import PlayerTests
-import ScytheTests
+import PowerTests
 import Test exposing (..)
 
 
 all : Test
 all =
-    describe "Scythe" [ PlayerTests.all, ScytheTests.all ]
+    describe "Scythe" [ PowerTests.all, PlayerTests.all ]

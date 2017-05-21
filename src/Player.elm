@@ -3,15 +3,18 @@ module Player
         ( Player
         , initPlayer
         , totalPower
+        , updatePlayer
+        , Msg(..)
         , getPower
         , getCards
         )
 
+import Card exposing (..)
 import Html exposing (..)
 import Html.SelectPrism exposing (selectp)
-import Power exposing (..)
-import Card exposing (..)
 import List.Extra exposing (removeAt)
+import Power exposing (..)
+import Result exposing (andThen)
 
 
 type Msg
@@ -41,37 +44,39 @@ updatePlayer msg player =
             addCard result player
 
         RemoveCard index ->
-            player
+            removeCard index player
 
 
 {-| setPower sets the player's new power if it's a valid power
 -}
-setPower : Result e Power -> Player -> Player
-setPower result ((Player oldPower cards) as player) =
-    case result of
-        Ok newPower ->
-            if isValidPower newPower then
+setPower : Result String Power -> Player -> Player
+setPower resultPower ((Player oldPower cards) as player) =
+    let
+        resultPower_ =
+            resultPower |> andThen intToPower
+    in
+        case resultPower_ of
+            Ok newPower ->
                 Player newPower cards
-            else
-                player
 
-        Err _ ->
-            player
+            Err _ ->
+                player
 
 
 {-| addCard will add a card to a player's used cards if it's a valid card
 -}
-addCard : Result e Card -> Player -> Player
-addCard result ((Player power cards) as player) =
-    case result of
-        Ok newCard ->
-            if isValidCard newCard then
+addCard : Result String Card -> Player -> Player
+addCard resultCard ((Player power cards) as player) =
+    let
+        resultCard_ =
+            resultCard |> andThen intToCard
+    in
+        case resultCard_ of
+            Ok newCard ->
                 Player power (newCard :: cards)
-            else
-                player
 
-        Err _ ->
-            player
+            Err _ ->
+                player
 
 
 {-| removeCard removes the card at the given index
