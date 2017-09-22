@@ -11,6 +11,12 @@ run:
 test:
 	./node_modules/.bin/elm-test
 
+analyse:
+	./node_modules/.bin/elm-analyse
+
+analyse-server:
+	./node_modules/.bin/elm-analyse -s -p 3001
+
 build: intstall
 	./node_modules/.bin/elm-make src/Scythe.elm --output dist/scythe.js
 

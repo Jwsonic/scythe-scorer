@@ -1,10 +1,12 @@
-module NewUI exposing (..)
+module NewUI exposing (main)
 
-import Html exposing (..)
-import Html.Attributes exposing (src)
+import Html exposing (Html, div, img)
+import Html.Attributes exposing (id, src, style)
 import Html.Events exposing (on)
-import Json.Decode exposing (float, map)
-import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
+import Json.Decode as Json exposing (andThen, float)
+import Json.Decode.Pipeline exposing (decode, required, requiredAt)
+import Time exposing (Time)
+import AnimationFrame exposing (times)
 
 
 main : Program Never Model Msg
@@ -14,53 +16,188 @@ main =
         , view = view
         , update = update
         , subscriptions = subscriptions
+        }
+
+
+{-| Raw CoordianteData about a touch/click event. Contains width/height as well for local/polar
+coordiante calculation.
+-}
+type alias CoordinateData =
+    { x : Float
+    , y : Float
+    , height : Float
+    , width : Float
+    }
+
+
+{-| Represents a Polar Coordinate within the wheel. Json decoders guarentee that if
+you get a PolarCoordiante in a Msg, it is in the wheel.
+-}
+type alias PolarCoordiante =
+    { distance : Float
+    , angle : Float
     }
 
 
 type alias Model =
-    { clickX: Float,
-      clickY: Float
+    { rotation : Float {- The current rotation to use -}
+    , nextRotation : Float {- The next rotation to use when RAF syncs -}
+    , lastTouch : PolarCoordiante {- The last coordinate touched -}
     }
 
 
-type Msg = NoOP | SpinnerClick Point
+type Msg
+    = WheelClick PolarCoordiante
+    | TouchStart PolarCoordiante
+    | TouchMove PolarCoordiante
+    | TouchEnd PolarCoordiante
+    | TouchCancel PolarCoordiante
+    | AnimFrame Time
 
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SpinnerClick {clientX, clientY} ->
-          ({clickX = (Debug.log "X " clientX), clickY = (Debug.log "Y " clientY)}, Cmd.none)
-        NoOP ->
-          (model, Cmd.none)
-            
+        WheelClick data ->
+            -- Save the next rotation where the user clicked
+            ( { model
+                | nextRotation = calculateClickRotation model.rotation data
+              }
+            , Cmd.none
+            )
+
+        TouchStart touch ->
+            -- Save the the start so we can calculate diffs
+            ( { model | lastTouch = touch }, Cmd.none )
+
+        TouchMove touch ->
+            -- Save the next rotation diff
+            ( { model
+                | lastTouch = touch
+                , nextRotation = calculateTouchRotation model.rotation model.lastTouch touch
+              }
+            , Cmd.none
+            )
+
+        TouchEnd touch ->
+            -- Save the next rotation diff
+            ( { model
+                | lastTouch = touch
+                , nextRotation = calculateTouchRotation model.rotation model.lastTouch touch
+              }
+            , Cmd.none
+            )
+
+        AnimFrame _ ->
+            -- Update the current rotation since we're in the RAF frame
+            ( { model | rotation = model.nextRotation }, Cmd.none )
+
+        TouchCancel _ ->
+            -- Ignore this for now
+            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
-view model =
+view { rotation } =
     div []
-        [ spinnerImg
+        [ wheelImg rotation
         ]
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+subscriptions _ =
+    times AnimFrame
 
 
-init : (Model, Cmd Msg)
-init = 
-    ({clickX = 0, clickY = 0}, Cmd.none)
+init : ( Model, Cmd Msg )
+init =
+    ( { rotation = 0, nextRotation = 0, lastTouch = { distance = 0, angle = 0 } }, Cmd.none )
 
 
-spinnerImg : Html Msg
-spinnerImg = img [src "img/power_dial_1.png", on "click" decodePoint] []
-  
-type alias Point = {clientX: Float, clientY: Float}
+wheelImg : Float -> Html Msg
+wheelImg rotation =
+    let
+        wheelStyle =
+            style
+                [ ( "transform", "rotate(" ++ toString rotation ++ "rad)" )
+                , ( "touch-action", "none" ) {- Prevents pull to refresh on mobile -}
+                ]
+    in
+        img
+            [ src "img/power_dial_1.png"
+            , on "click" decodeClick
+            , on "touchstart" <| decodeTouchEvent TouchStart
+            , on "touchmove" <| decodeTouchEvent TouchMove
+            , on "touchend" <| decodeTouchEvent TouchEnd
+            , on "touchcancel" <| decodeTouchEvent TouchCancel
+            , id "wheel"
+            , wheelStyle
+            ]
+            []
 
-decodePoint : Json.Decode.Decoder Msg
-decodePoint = 
-  decode Point 
-  |> required "clientX" float
-  |> required "clientY" float
-  |> Json.Decode.map SpinnerClick
+
+{-| decodeTouchEvent decodes a single touch event into a polar coordiante
+-}
+decodeTouchEvent : (PolarCoordiante -> value) -> Json.Decoder value
+decodeTouchEvent event =
+    decode CoordinateData
+        |> requiredAt [ "touches", "0", "clientX" ] float
+        |> requiredAt [ "touches", "0", "clientY" ] float
+        |> decodeWidthHeight
+        |> andThen decodeInWheel
+        |> Json.map event
+
+
+decodeClick : Json.Decoder Msg
+decodeClick =
+    decode CoordinateData
+        |> required "clientX" float
+        |> required "clientY" float
+        |> decodeWidthHeight
+        |> andThen decodeInWheel
+        |> Json.map WheelClick
+
+
+decodeWidthHeight : Json.Decoder (Float -> Float -> a) -> Json.Decoder a
+decodeWidthHeight decoder =
+    decoder
+        |> requiredAt [ "target", "height" ] float
+        |> requiredAt [ "target", "width" ] float
+
+
+{-|
+    decodeInWheel turns a CoordinateData into a PolarCoordiante if it exists in the wheel.
+-}
+decodeInWheel : CoordinateData -> Json.Decoder PolarCoordiante
+decodeInWheel { x, y, width, height } =
+    let
+        localX =
+            (width / 2 - x) * -1
+
+        localY =
+            height / 2 - y
+
+        ( distance, angle ) =
+            toPolar ( localX, localY )
+
+        wheelRadius =
+            width / 2
+    in
+        if distance > wheelRadius then
+            Json.fail "Not in wheel"
+        else
+            Json.succeed { distance = distance, angle = angle }
+
+
+{-| calculateClickRotation calculates the new angle for a touch
+-}
+calculateClickRotation : Float -> PolarCoordiante -> Float
+calculateClickRotation currentRotation { angle } =
+    currentRotation + angle - pi / 2
+
+
+{-| calculateTouchRotation calculates the new angle for a click
+-}
+calculateTouchRotation : Float -> PolarCoordiante -> PolarCoordiante -> Float
+calculateTouchRotation currentRotation lastTouch touch =
+    currentRotation + lastTouch.angle - touch.angle
