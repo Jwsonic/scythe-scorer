@@ -61,7 +61,7 @@ update msg model =
         WheelClick data ->
             -- Save the next rotation where the user clicked
             ( { model
-                | nextRotation = calculateClickRotation model.rotation data
+                | nextRotation = calculateClickRotation model.nextRotation data
               }
             , Cmd.none
             )
@@ -83,7 +83,7 @@ update msg model =
             -- Save the next rotation diff
             ( { model
                 | lastTouch = touch
-                , nextRotation = calculateTouchRotation model.rotation model.lastTouch touch
+                , nextRotation = calculateTouchRotation model.rotation model.lastTouch touch |> snapToPoint
               }
             , Cmd.none
             )
@@ -189,15 +189,34 @@ decodeInWheel { x, y, width, height } =
             Json.succeed { distance = distance, angle = angle }
 
 
-{-| calculateClickRotation calculates the new angle for a touch
+{-| calculateClickRotation calculates the new angle for a click
 -}
 calculateClickRotation : Float -> PolarCoordiante -> Float
 calculateClickRotation currentRotation { angle } =
-    currentRotation + angle - pi / 2
+    Debug.log "click" <| snapToPoint <| currentRotation + angle - pi / 2
 
 
-{-| calculateTouchRotation calculates the new angle for a click
+{-| calculateTouchRotation calculates the new angle for a touch
 -}
 calculateTouchRotation : Float -> PolarCoordiante -> PolarCoordiante -> Float
 calculateTouchRotation currentRotation lastTouch touch =
     currentRotation + lastTouch.angle - touch.angle
+
+
+pointAngles : List Float
+pointAngles =
+    List.range 0 7
+        |> List.map toFloat
+        |> List.map ((*) (pi / 8))
+
+
+snapToPoint : Float -> Float
+snapToPoint angle =
+    let
+        chooseCloser nextAngle currentAngle =
+            if abs (currentAngle - angle) < abs (nextAngle - angle) then
+                currentAngle
+            else
+                nextAngle
+    in
+        List.foldr chooseCloser (10 * pi) pointAngles
