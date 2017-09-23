@@ -193,7 +193,7 @@ decodeInWheel { x, y, width, height } =
 -}
 calculateClickRotation : Float -> PolarCoordiante -> Float
 calculateClickRotation currentRotation { angle } =
-    Debug.log "click" <| snapToPoint <| currentRotation + angle - pi / 2
+    Debug.log "click" <| currentRotation + angle - pi / 2
 
 
 {-| calculateTouchRotation calculates the new angle for a touch
@@ -208,13 +208,16 @@ pointAngles =
     List.range 0 7
         |> List.map toFloat
         |> List.map ((*) (pi / 8))
+        |> List.map radians
 
 
 snapToPoint : Float -> Float
 snapToPoint angle =
     let
+        absAngle = abs <| Debug.log "old angle" angle
+
         chooseCloser nextAngle currentAngle =
-            if abs (currentAngle - angle) < abs (nextAngle - angle) then
+            if abs (currentAngle - absAngle) < abs (nextAngle - absAngle) then
                 currentAngle
             else
                 nextAngle
