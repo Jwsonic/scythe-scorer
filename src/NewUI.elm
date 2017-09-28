@@ -5,8 +5,7 @@ import Html.Attributes exposing (id, src, style)
 import Html.Events exposing (on)
 import Json.Decode as Json exposing (andThen, float)
 import Json.Decode.Pipeline exposing (decode, required, requiredAt)
-import Time exposing (Time)
-import AnimationFrame exposing (times)
+import Animation exposing (rad, spring)
 
 
 main : Program Never Model Msg
@@ -40,9 +39,16 @@ type alias PolarCoordiante =
 
 
 type alias Model =
-    { rotation : Float {- The current rotation to use -}
-    , nextRotation : Float {- The next rotation to use when RAF syncs -}
-    , lastTouch : PolarCoordiante {- The last coordinate touched -}
+    { rotation : Float
+
+    {- The current rotation to use -}
+    , nextRotation : Float
+
+    {- The next rotation to use when RAF syncs -}
+    , lastTouch : PolarCoordiante
+
+    {- The last coordinate touched -}
+    , animationState : Animation.State
     }
 
 
@@ -52,19 +58,26 @@ type Msg
     | TouchMove PolarCoordiante
     | TouchEnd PolarCoordiante
     | TouchCancel PolarCoordiante
-    | AnimFrame Time
+    | Animate Animation.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         WheelClick data ->
-            -- Save the next rotation where the user clicked
-            ( { model
-                | nextRotation = calculateClickRotation model.nextRotation data
-              }
-            , Cmd.none
-            )
+            let
+                nextRotation =
+                    rad <| snapToPoint <| calculateClickRotation model.nextRotation data
+
+                newAnimationState =
+                    Animation.interrupt
+                        [ Animation.toWith (spring { stiffness = 100, damping = 10 })
+                            [ Animation.rotate nextRotation
+                            ]
+                        ]
+                        model.animationState
+            in
+                ( { model | animationState = newAnimationState }, Cmd.none )
 
         TouchStart touch ->
             -- Save the the start so we can calculate diffs
@@ -83,14 +96,14 @@ update msg model =
             -- Save the next rotation diff
             ( { model
                 | lastTouch = touch
-                , nextRotation = calculateTouchRotation model.rotation model.lastTouch touch |> snapToPoint
+                , nextRotation = calculateTouchRotation model.rotation model.lastTouch touch
               }
             , Cmd.none
             )
 
-        AnimFrame _ ->
+        Animate animationMsg ->
             -- Update the current rotation since we're in the RAF frame
-            ( { model | rotation = model.nextRotation }, Cmd.none )
+            ( { model | animationState = Animation.update animationMsg model.animationState }, Cmd.none )
 
         TouchCancel _ ->
             -- Ignore this for now
@@ -98,41 +111,50 @@ update msg model =
 
 
 view : Model -> Html Msg
-view { rotation } =
+view model =
     div []
-        [ wheelImg rotation
+        [ wheelImg model
         ]
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    times AnimFrame
+subscriptions model =
+    Animation.subscription Animate [ model.animationState ]
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { rotation = 0, nextRotation = 0, lastTouch = { distance = 0, angle = 0 } }, Cmd.none )
-
-
-wheelImg : Float -> Html Msg
-wheelImg rotation =
-    let
-        wheelStyle =
-            style
-                [ ( "transform", "rotate(" ++ toString rotation ++ "rad)" )
-                , ( "touch-action", "none" ) {- Prevents pull to refresh on mobile -}
+    ( { rotation = 0
+      , nextRotation = 0
+      , lastTouch = { distance = 0, angle = 0 }
+      , animationState =
+            Animation.style
+                [ Animation.rotate <| rad 0
                 ]
+      }
+    , Cmd.none
+    )
+
+
+wheelImg : Model -> Html Msg
+wheelImg { animationState } =
+    let
+        attrs =
+            List.append
+                [ src "img/power_dial_1.png"
+                , on "click" decodeClick
+                , on "touchstart" <| decodeTouchEvent TouchStart
+                , on "touchmove" <| decodeTouchEvent TouchMove
+                , on "touchend" <| decodeTouchEvent TouchEnd
+                , on "touchcancel" <| decodeTouchEvent TouchCancel
+                , id "wheel"
+                , style [ ( "touch-action", "none" ) ]
+                ]
+            <|
+                Animation.render animationState
     in
         img
-            [ src "img/power_dial_1.png"
-            , on "click" decodeClick
-            , on "touchstart" <| decodeTouchEvent TouchStart
-            , on "touchmove" <| decodeTouchEvent TouchMove
-            , on "touchend" <| decodeTouchEvent TouchEnd
-            , on "touchcancel" <| decodeTouchEvent TouchCancel
-            , id "wheel"
-            , wheelStyle
-            ]
+            attrs
             []
 
 
@@ -166,6 +188,7 @@ decodeWidthHeight decoder =
 
 
 {-|
+
     decodeInWheel turns a CoordinateData into a PolarCoordiante if it exists in the wheel.
 -}
 decodeInWheel : CoordinateData -> Json.Decoder PolarCoordiante
@@ -193,31 +216,55 @@ decodeInWheel { x, y, width, height } =
 -}
 calculateClickRotation : Float -> PolarCoordiante -> Float
 calculateClickRotation currentRotation { angle } =
-    Debug.log "click" <| currentRotation + angle - pi / 2
+    Debug.log "click" <| clampAngle <| angle - pi / 2
 
 
 {-| calculateTouchRotation calculates the new angle for a touch
 -}
 calculateTouchRotation : Float -> PolarCoordiante -> PolarCoordiante -> Float
 calculateTouchRotation currentRotation lastTouch touch =
-    currentRotation + lastTouch.angle - touch.angle
+    clampAngle <| currentRotation + lastTouch.angle - touch.angle
+
+
+clampAngle : Float -> Float
+clampAngle angle =
+    if angle > 2 * pi then
+        maxClampAngle angle
+    else if angle < 0 then
+        minClampAngle angle
+    else
+        angle
+
+
+maxClampAngle : Float -> Float
+maxClampAngle angle =
+    if angle < 2 * pi then
+        angle
+    else
+        maxClampAngle <| angle - 2 * pi
+
+
+minClampAngle : Float -> Float
+minClampAngle angle =
+    if angle > 0 then
+        angle
+    else
+        minClampAngle <| angle + 2 * pi
 
 
 pointAngles : List Float
 pointAngles =
     List.range 0 7
         |> List.map toFloat
-        |> List.map ((*) (pi / 8))
-        |> List.map radians
+        |> List.map ((*) (pi / 4))
+        |> Debug.log "angles"
 
 
 snapToPoint : Float -> Float
 snapToPoint angle =
     let
-        absAngle = abs <| Debug.log "old angle" angle
-
         chooseCloser nextAngle currentAngle =
-            if abs (currentAngle - absAngle) < abs (nextAngle - absAngle) then
+            if abs (currentAngle - angle) < abs (nextAngle - angle) then
                 currentAngle
             else
                 nextAngle
